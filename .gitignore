@@ -27,6 +27,7 @@
 *.so
 *.so.*
 *.dylib
+*.cso
 
 # Executables
 *.exe
@@ -53,3 +54,6 @@ dkms.conf
 
 # Build Directory
 build/
+
+# VTune Bullshit
+vtune/
