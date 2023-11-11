@@ -19,6 +19,7 @@ typedef struct
 
   void *block;
   void *chunk;
+  void *world;
 } game_modules_t;
 
 typedef struct
@@ -26,7 +27,6 @@ typedef struct
   game_modules_t modules;
 
 //  ren_chunk_t chunks[64 * 64];
-  chunk_t *chunks[64 * 64];
   
   ren_texture_t debug_font;
 
