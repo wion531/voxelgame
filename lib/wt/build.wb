@@ -1,0 +1,11 @@
+(add-static-library 'wt "src/*.c")
+(add-include-directories 'wt "include")
+
+(= debug-definition (string.glue "-DWT_DEBUG=" (if (is build-mode "debug") "1" "0")))
+
+(add-compile-definitions 'wt debug-definition)
+
+(defn add-wt (target)
+  (add-include-directories target "lib/wt/include")
+  (add-link-libraries target 'wt)
+  (add-compile-definitions target debug-definition))
