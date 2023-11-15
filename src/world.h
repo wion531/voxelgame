@@ -14,7 +14,7 @@ typedef struct
   wt_vec3_t neighbor;
 
   block_face_t face;
-  
+
   bool hit;
 } world_raycast_t;
 
@@ -27,6 +27,7 @@ void            world_dbg_rebuild_meshes(void);
 
 void            world_set_block(wt_vec3_t pos, block_id_t block);
 block_id_t      world_get_block(wt_vec3_t pos);
+bool            world_within_bounds(wt_vec3_t pos);
 
 world_raycast_t world_raycast(int max_num_blocks);
 

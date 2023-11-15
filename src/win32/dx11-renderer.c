@@ -689,10 +689,11 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
       0, 2, 3,
     };
 
+    f32 fi = i;
     wt_vec3f_t block_coords = wt_vec3f(
-      i % CHUNK_SIZE_X,
-      i / (CHUNK_SIZE_X * CHUNK_SIZE_Z),
-      (i / CHUNK_SIZE_X) % CHUNK_SIZE_Z);
+      fmodf(fi, CHUNK_SIZE_X),
+      fi / (CHUNK_SIZE_X * CHUNK_SIZE_Z),
+      fmodf((fi / CHUNK_SIZE_X), CHUNK_SIZE_Z));
 
     wt_vec3_t neighbors[] = {
       {  0,  1,  0 },

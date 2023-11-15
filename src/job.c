@@ -49,11 +49,11 @@ u32 job_thread_func(void *param)
         qe.func(qe.param);
       }
     }
-
-    //if (s->queue_pos == 0)
-      sys_thread_sleep(1);
-    //else
-      _mm_pause();
+    // NOTE: this sleep makes chunk generation slower, but without it, a significant
+    // amount of input lag is introduced.
+    // when chunk generation is done in a cute little UI, see if this can be removed
+    sys_thread_sleep(1);
+    _mm_pause();
     //sys_thread_yield();
   }
   return 0;

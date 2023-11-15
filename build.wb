@@ -27,7 +27,10 @@
         'output vs-name
         'cmd (string.glue
           "fxc.exe /nologo /Zpr /T vs_5_0 /E vs_main "
-          (if (is build-mode "debug") "/Od /Zi" "/O3")
+          (if
+            (is build-mode "debug") "/Od /Zi"
+            (is build-mode "reldbg") "/O3 /Zi"
+            (is build-mode "release") "/O3")
           " /Fo " vs-name " " filename))
       (add-custom-target
         'name ps-target-name
@@ -35,7 +38,10 @@
         'output ps-name
         'cmd (string.glue
           "fxc.exe /nologo /Zpr /T ps_5_0 /E ps_main "
-          (if (is build-mode "debug") "/Od /Zi" "/O3")
+          (if
+            (is build-mode "debug") "/Od /Zi"
+            (is build-mode "reldbg") "/O3 /Zi"
+            (is build-mode "release") "/O3")
           " /Fo " ps-name " " filename)))
     (add-shader "data/shaders/dx11/solid.hlsl")
     (add-shader "data/shaders/dx11/sprite.hlsl")

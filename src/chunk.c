@@ -40,22 +40,31 @@ static f32 interpolate(f32 x, f32 y, f32 w)
   return (y - x) * w + x;
 }
 
+static f32 smoothstep(f32 x, f32 y, f32 w)
+{
+  f32 v = w * w * w * (w * (w * 6 - 15) + 10);
+  return x + v * (y - x);
+}
+
 static u32 scramble(u32 a)
 {
+#if 0
   a = (a+0x7ed55d16) + (a<<12);
   a = (a^0xc761c23c) ^ (a>>19);
   a = (a+0x165667b1) + (a<<5);
   a = (a+0xd3a2646c) ^ (a<<9);
   a = (a+0xfd7046c5) + (a<<3);
   a = (a^0xb55a4f09) ^ (a>>16);
+#else
+  a ^= (a >> 17);
+  a *= 0xed5ad4bb;
+  a ^= (a >> 11);
+  a *= 0xac4c1b51;
+  a ^= (a >> 15);
+  a *= 0x31848bab;
+  a ^= (a >> 14);
+#endif
 
-  a = (a+0x7ed55d16) + (a<<12);
-  a = (a^0xc761c23c) ^ (a>>19);
-  a = (a+0x165667b1) + (a<<5);
-  a = (a+0xd3a2646c) ^ (a<<9);
-  a = (a+0xfd7046c5) + (a<<3);
-  a = (a^0xb55a4f09) ^ (a>>16);
-  
   return a;
 }
 
@@ -115,7 +124,7 @@ static wt_vec2f_t random_gradient(int ix, int iy)
 
   f32 s = stupid_sin(sc);
   f32 c = stupid_sin(64 - sc);
-  
+
   return wt_vec2f(c, s);
 #endif
 }
@@ -143,13 +152,13 @@ static f32 perlin(f32 x, f32 y)
   f32 n0, n1, ix0, ix1, val;
   n0 = dot_grid_gradient(x0, y0, x, y);
   n1 = dot_grid_gradient(x1, y0, x, y);
-  ix0 = interpolate(n0, n1, sx);
+  ix0 = smoothstep(n0, n1, sx);
 
   n0 = dot_grid_gradient(x0, y1, x, y);
   n1 = dot_grid_gradient(x1, y1, x, y);
-  ix1 = interpolate(n0, n1, sx);
+  ix1 = smoothstep(n0, n1, sx);
 
-  val = interpolate(ix0, ix1, sy);
+  val = smoothstep(ix0, ix1, sy);
   return val;
 }
 
@@ -163,11 +172,11 @@ static block_id_t get_block(wt_vec3_t pos)
 #if 1
     for (int i = 0; i < PERLIN_NUM_STEPS; ++i)
     {
-      f32 m = 0.012f * (PERLIN_NUM_STEPS - i);
+      f32 m = 0.015f * (PERLIN_NUM_STEPS - i);
       f32 s = perlin(pos.x * m, pos.z * m);
       s = (s + 1) / 2.0f;
       f32 lo = i * (1.0f / (PERLIN_NUM_STEPS + 1));
-      f32 hi = 1.5f - lo;
+      f32 hi = 1.4f - lo;
       p *= interpolate(lo, hi, s);
       p += 1.0f;
     }
@@ -180,10 +189,10 @@ static block_id_t get_block(wt_vec3_t pos)
 #else
     p = 20;
 #endif
-    
+
     bool solid = pos.y <= p;
     bool grass = pos.y == (int)p;
-    
+
     if (solid)
     {
       return s->blocks[grass ? BLOCK_GRASS_BLOCK : BLOCK_DIRT];
@@ -202,7 +211,7 @@ void chunk_gen(chunk_t *c)
     pos.y = i / (CHUNK_SIZE_X * CHUNK_SIZE_Z);
 
     pos = wt_vec3i_add(pos, wt_vec3i_mul_i32(wt_vec3(c->position.x, 0, c->position.y), 16));
-    
+
     c->blocks[i] = get_block(pos);
   }
   c->dirty = true;

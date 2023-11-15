@@ -20,6 +20,8 @@ typedef struct
   void *block;
   void *chunk;
   void *world;
+
+  void *player;
 } game_modules_t;
 
 typedef struct
@@ -30,12 +32,14 @@ typedef struct
   
   ren_texture_t debug_font;
 
+/*
   wt_vec3f_t camera_pos;
   wt_vec3f_t camera_front;
   wt_vec2f_t camera_rotation;
+*/
 
   block_id_t hotbar[INVENTORY_SIZE];
-  usize hotbar_pos;
+  isize hotbar_pos;
 
   block_id_t blocks[BLOCK_MAX];
 

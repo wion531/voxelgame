@@ -7,6 +7,7 @@
 #include "job.h"
 #include "chunk.h"
 #include "world.h"
+#include "player.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +32,8 @@ void game_init(game_state_t *s)
   block_mgr_init();
   chunk_init();
   world_init();
+
+  player_init();
 
   block_info_t blocks_info[] = {
     { "Air",        
@@ -66,9 +69,11 @@ void game_init(game_state_t *s)
 
   s->debug_font = ren_texture_load_from_file("data/sprites/debug-font.png");
 
+#if 0
   s->camera_pos.x = 256;
   s->camera_pos.y = 15;
   s->camera_pos.z = 256;
+#endif
 
   s->hotbar[0] = s->blocks[BLOCK_DIRT];
   s->hotbar[1] = s->blocks[BLOCK_GRASS_BLOCK];
@@ -101,6 +106,7 @@ bool game_tick(game_state_t *s)
   job_tick();
   
   // === camera movement ===
+#if 0
   {
     static const f32 k_camera_speed = 0.1f;
     static const f32 k_camera_run_speed = 0.2f;
@@ -152,19 +158,32 @@ bool game_tick(game_state_t *s)
 
     ren_camera_set(direction);
   }
+#else
+  player_tick();
+#endif
 
   i32 mouse_wheel = sys_mouse_get_wheel();
   if (mouse_wheel != 0)
   {
     s->hotbar_pos = (s->hotbar_pos - mouse_wheel) % INVENTORY_SIZE;
+    // i thought % did this automatically...
+    if (s->hotbar_pos < 0)
+    {
+      s->hotbar_pos = INVENTORY_SIZE - 1;
+    }
   }
 
+  wt_vec3i_t player_block_pos = wt_vec3f_to_vec3i(player_get_position());
   if (sys_mouse_pressed(SYS_MOUSE_RIGHT))
   {
     world_raycast_t rc = world_raycast(4);
     if (rc.hit)
     {
-      world_set_block(rc.neighbor, s->hotbar[s->hotbar_pos]);
+      if (rc.neighbor.x != player_block_pos.x || (rc.neighbor.y != player_block_pos.y &&
+        rc.neighbor.y != player_block_pos.y + 1) || rc.neighbor.z != player_block_pos.z)
+      {
+        world_set_block(rc.neighbor, s->hotbar[s->hotbar_pos]);
+      }
     }
   }
 
@@ -242,18 +261,24 @@ static void game_render(void)
   };
   ren_draw_rect(reticle[0], WT_COLOR_WHITE);
   ren_draw_rect(reticle[1], WT_COLOR_WHITE);
-  
+
+#if 0
   draw_debug_text(wt_vec2(1, 1), "camera pos:   (%f %f %f)",
     s->camera_pos.x, s->camera_pos.y, s->camera_pos.z);
   draw_debug_text(wt_vec2(1, 2), "camera front: (%f %f %f)",
     s->camera_front.x, s->camera_front.y, s->camera_front.z);
   draw_debug_text(wt_vec2(1, 3), "camera rotation: (%.2f %.2f)",
     s->camera_rotation.x * 360.0f, s->camera_rotation.y * 360.0f);
+#endif
+
+  wt_vec3f_t player_pos = player_get_position();
+  draw_debug_text(wt_vec2(1, 1), "player position: (%.2f %.2f %.2f)",
+    player_pos.x, player_pos.y, player_pos.z);
 
   block_info_t *holding_info = block_get_info(s->hotbar[s->hotbar_pos]);
   if (holding_info)
   {
-    draw_debug_text(wt_vec2(1, 4), "holding: %s", holding_info->name);
+    draw_debug_text(wt_vec2(1, 2), "holding: %s", holding_info->name);
   }
   
   ren_frame_end();

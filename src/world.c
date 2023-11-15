@@ -3,6 +3,7 @@
 #include "game.h"
 #include "chunk.h"
 #include "job.h"
+#include "player.h"
 #include <math.h>
 
 typedef struct
@@ -13,15 +14,6 @@ typedef struct
 world_state_t *get_state(void)
 {
   return game_get_state()->modules.world;
-}
-
-static wt_vec3f_t world_get_player_pos(void)
-{
-  // i do not know why it's multiplied by two...
-  game_state_t *gs = game_get_state();
-  wt_vec3f_t res = wt_vec3f_mul_f32(gs->camera_pos, 2.0f);
-  res.y -= 1.0f; // body instead of head
-  return res;
 }
 
 void world_init(void)
@@ -143,19 +135,24 @@ block_id_t world_get_block(wt_vec3_t pos)
   return 0;
 }
 
+bool world_within_bounds(wt_vec3_t pos)
+{
+  return (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 &&
+    pos.x < WORLD_MAX_CHUNKS_X * CHUNK_SIZE_X &&
+    pos.y < CHUNK_SIZE_Y &&
+    pos.z < WORLD_MAX_CHUNKS_Z * CHUNK_SIZE_Z);
+}
+
 world_raycast_t world_raycast(int max_num_blocks)
 {
-//  world_state_t *s = get_state();
-  game_state_t *gs = game_get_state();
-
-  wt_vec3f_t player_pos = world_get_player_pos();
-  player_pos.y += 1; // cast from the player's head  
+  wt_vec3f_t player_pos = player_get_head_position();
+  wt_vec2f_t player_rot = player_get_rotation();
   wt_vec3i_t map_pos = wt_vec3f_to_vec3i(player_pos);
 
-  f32 yc = cosf(gs->camera_rotation.y * WT_TAU_F32);
-  f32 ys = sinf(gs->camera_rotation.y * WT_TAU_F32);
-  f32 ac = cosf(gs->camera_rotation.x * WT_TAU_F32) * yc;
-  f32 as = sinf(gs->camera_rotation.x * WT_TAU_F32) * yc;
+  f32 yc = cosf(player_rot.y * WT_TAU_F32);
+  f32 ys = sinf(player_rot.y * WT_TAU_F32);
+  f32 ac = cosf(player_rot.x * WT_TAU_F32) * yc;
+  f32 as = sinf(player_rot.x * WT_TAU_F32) * yc;
 
   // length of ray from one side to the next side
   f32 delta_dist_x = (ac == 0.0f) ? 1e30 : fabsf(1.0f / ac);
