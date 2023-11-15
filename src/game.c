@@ -36,28 +36,28 @@ void game_init(game_state_t *s)
   player_init();
 
   block_info_t blocks_info[] = {
-    { "Air",        
+    { "Air",
       { wt_vec2(0, 0), wt_vec2(0, 0), wt_vec2(0, 0), wt_vec2(0, 0), wt_vec2(0, 0), wt_vec2(0, 0) },
       false },
-    { "Dirt",        
+    { "Dirt",
       { wt_vec2(1, 0), wt_vec2(1, 0), wt_vec2(1, 0), wt_vec2(1, 0), wt_vec2(1, 0), wt_vec2(1, 0) },
       true  },
-    { "Grass Block", 
+    { "Grass Block",
       { wt_vec2(3, 0), wt_vec2(1, 0), wt_vec2(2, 0), wt_vec2(2, 0), wt_vec2(2, 0), wt_vec2(2, 0) },
       true  },
-    { "Planks",      
+    { "Planks",
       { wt_vec2(1, 1), wt_vec2(1, 1), wt_vec2(1, 1), wt_vec2(1, 1), wt_vec2(1, 1), wt_vec2(1, 1) },
       true  },
-    { "Cobblestone", 
+    { "Cobblestone",
       { wt_vec2(2, 1), wt_vec2(2, 1), wt_vec2(2, 1), wt_vec2(2, 1), wt_vec2(2, 1), wt_vec2(2, 1) },
       true  },
-    { "Stone Tile",  
+    { "Stone Tile",
       { wt_vec2(3, 1), wt_vec2(3, 1), wt_vec2(3, 1), wt_vec2(3, 1), wt_vec2(3, 1), wt_vec2(3, 1) },
       true  },
-    { "Log",  
+    { "Log",
       { wt_vec2(4, 0), wt_vec2(4, 0), wt_vec2(4, 1), wt_vec2(4, 1), wt_vec2(4, 1), wt_vec2(4, 1) },
       true  },
-    { "Leaves",  
+    { "Leaves",
       { wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0) },
       false },
   };
@@ -102,9 +102,9 @@ bool game_tick(game_state_t *s)
   {
     world_generate();
   }
-  
+
   job_tick();
-  
+
   // === camera movement ===
 #if 0
   {
@@ -139,7 +139,7 @@ bool game_tick(game_state_t *s)
     {
       s->camera_pos = wt_vec3f_sub(s->camera_pos, wt_vec3f_mul_f32(camera_front, speed));
     }
-  
+
     if (sys_key_down(SYS_KEYCODE_D))
     {
       s->camera_pos = wt_vec3f_add(s->camera_pos,
@@ -173,17 +173,12 @@ bool game_tick(game_state_t *s)
     }
   }
 
-  wt_vec3i_t player_block_pos = wt_vec3f_to_vec3i(player_get_position());
   if (sys_mouse_pressed(SYS_MOUSE_RIGHT))
   {
     world_raycast_t rc = world_raycast(4);
-    if (rc.hit)
+    if (rc.hit && !player_intersects_block_position(rc.neighbor))
     {
-      if (rc.neighbor.x != player_block_pos.x || (rc.neighbor.y != player_block_pos.y &&
-        rc.neighbor.y != player_block_pos.y + 1) || rc.neighbor.z != player_block_pos.z)
-      {
-        world_set_block(rc.neighbor, s->hotbar[s->hotbar_pos]);
-      }
+      world_set_block(rc.neighbor, s->hotbar[s->hotbar_pos]);
     }
   }
 
@@ -280,7 +275,7 @@ static void game_render(void)
   {
     draw_debug_text(wt_vec2(1, 2), "holding: %s", holding_info->name);
   }
-  
+
   ren_frame_end();
 }
 

@@ -9,6 +9,9 @@
 void       player_init(void);
 void       player_tick(void);
 
+// if a block existed at that position, would the player intersect it?
+bool       player_intersects_block_position(wt_vec3i_t pos);
+
 wt_vec3f_t player_get_position(void);
 wt_vec2f_t player_get_rotation(void);
 

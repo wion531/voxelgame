@@ -6,13 +6,13 @@
 #include <math.h>
 
 #define WALK_SPEED (5.0f / 60.0f)
-#define RUN_SPEED (20.0f / 60.0f)
+#define RUN_SPEED (10.0f / 60.0f)
 
 #define GRAVITY -0.6f // sorry Mr. Davis
 
 #define TERMINAL_VELOCITY -53.0f
 
-#define JUMP_FORCE 30
+#define JUMP_FORCE 10
 
 typedef struct
 {
@@ -34,7 +34,136 @@ void player_init(void)
   game_state_t *gs = game_get_state();
   player_state_t *s = gs->modules.player = mem_hunk_push(sizeof(player_state_t));
 
-  s->position = wt_vec3f(1023.0f, 511.0f, 1023.0f);
+  s->position = wt_vec3f((WORLD_MAX_CHUNKS_X - 1) * CHUNK_SIZE_X, 511.0f,
+    (WORLD_MAX_CHUNKS_Z - 1) * CHUNK_SIZE_Z);
+}
+
+// todo: this function and the next are extremely similar.
+// find a way to refactor them
+static bool player_collides_with_world(void)
+{
+  player_state_t *s = get_state();
+
+  // worst case scenario is 12 blocks for a ~1x2x1 bounding box
+  wt_vec3_t blocks[12] = { 0 };
+  usize num_blocks = 0;
+
+  // determine which blocks the player is intersecting
+  i64 minx = floor(s->position.x - PLAYER_RADIUS);
+  i64 maxx = ceil(s->position.x + PLAYER_RADIUS);
+  i64 miny = floor(s->position.y);
+  i64 maxy = ceil(s->position.y + PLAYER_HEIGHT);
+  i64 minz = floor(s->position.z - PLAYER_RADIUS);
+  i64 maxz = ceil(s->position.z + PLAYER_RADIUS);
+
+  for (i64 y = miny; y < maxy; ++y)
+  {
+    for (i64 z = minz; z < maxz; ++z)
+    {
+      for (i64 x = minx; x < maxx; ++x)
+      {
+        blocks[num_blocks++] = wt_vec3(x, y, z);
+      }
+    }
+  }
+
+  // determine if the player bounding box intersects with any of them
+  wt_vec3f_t player_size = wt_vec3f(PLAYER_RADIUS * 2, PLAYER_HEIGHT, PLAYER_RADIUS * 2);
+  wt_vec3f_t player_pos = wt_vec3f(s->position.x - PLAYER_RADIUS,
+    s->position.y, s->position.z - PLAYER_RADIUS); // bottom front left corner
+
+  for (usize i = 0; i < num_blocks; ++i)
+  {
+    if (world_within_bounds(blocks[i]))
+    {
+      block_id_t id = world_get_block(blocks[i]);
+      if (id != 0)
+      {
+        // todo: get mesh from block info
+        const wt_vec3f_t block_size = wt_vec3f(1, 1, 1);
+        wt_vec3f_t block_pos = wt_vec3i_to_vec3f(blocks[i]);
+
+        bool collision =
+          player_pos.x <= block_pos.x + block_size.x &&
+          player_pos.x + player_size.x >= block_pos.x &&
+          player_pos.y <= block_pos.y + block_size.y &&
+          player_pos.y + player_size.y >= block_pos.y &&
+          player_pos.z <= block_pos.z + block_size.z &&
+          player_pos.z + player_size.z >= block_pos.z;
+        if (collision)
+        {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool player_intersects_block_position(wt_vec3i_t pos)
+{
+  player_state_t *s = get_state();
+
+  // worst case scenario is 12 blocks for a ~1x2x1 bounding box
+  wt_vec3_t blocks[12] = { 0 };
+  usize num_blocks = 0;
+
+  // determine which blocks the player is intersecting
+  i64 minx = floor(s->position.x - PLAYER_RADIUS);
+  i64 maxx = ceil(s->position.x + PLAYER_RADIUS);
+  i64 miny = floor(s->position.y);
+  i64 maxy = ceil(s->position.y + PLAYER_HEIGHT);
+  i64 minz = floor(s->position.z - PLAYER_RADIUS);
+  i64 maxz = ceil(s->position.z + PLAYER_RADIUS);
+
+  bool given_pos_within_bounds = false;
+  for (i64 y = miny; y < maxy; ++y)
+  {
+    for (i64 z = minz; z < maxz; ++z)
+    {
+      for (i64 x = minx; x < maxx; ++x)
+      {
+        blocks[num_blocks++] = wt_vec3(x, y, z);
+        if (pos.x == x && pos.y == y && pos.z == z)
+        {
+          given_pos_within_bounds = true;
+        }
+      }
+    }
+  }
+
+  if (!given_pos_within_bounds)
+  {
+    return false;
+  }
+
+  // determine if the player bounding box intersects with any of them
+  wt_vec3f_t player_size = wt_vec3f(PLAYER_RADIUS * 2, PLAYER_HEIGHT, PLAYER_RADIUS * 2);
+  wt_vec3f_t player_pos = wt_vec3f(s->position.x - PLAYER_RADIUS,
+    s->position.y, s->position.z - PLAYER_RADIUS); // bottom front left corner
+
+  for (usize i = 0; i < num_blocks; ++i)
+  {
+    if (world_within_bounds(blocks[i]))
+    {
+      // todo: get mesh from block info
+      const wt_vec3f_t block_size = wt_vec3f(1, 1, 1);
+      wt_vec3f_t block_pos = wt_vec3i_to_vec3f(blocks[i]);
+
+      bool collision =
+        player_pos.x <= block_pos.x + block_size.x &&
+        player_pos.x + player_size.x >= block_pos.x &&
+        player_pos.y <= block_pos.y + block_size.y &&
+        player_pos.y + player_size.y >= block_pos.y &&
+        player_pos.z <= block_pos.z + block_size.z &&
+        player_pos.z + player_size.z >= block_pos.z;
+      if (collision)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 void player_tick(void)
@@ -50,7 +179,7 @@ void player_tick(void)
   // === horizontal movement ===
   s->running = sys_key_down(SYS_KEYCODE_LSHIFT);
   f32 move_speed = (s->running) ? RUN_SPEED : WALK_SPEED;
-  
+
   f32 dx = 0.0f;
   f32 dz = 0.0f;
 
@@ -96,7 +225,7 @@ void player_tick(void)
     below_pos = wt_vec3f_to_vec3i(s->position);
     below_pos.y -= 1;
     below = world_get_block(below_pos);
-    s->on_ground = (below != 0) && (s->position.y - floorf(s->position.y)) == 0.0f;
+    s->on_ground = (below != 0) && (s->position.y - floorf(s->position.y)) < 0.001f;
   }
   // no way is his ass on the ground
   else
@@ -129,28 +258,19 @@ void player_tick(void)
     f32 z = WT_CLAMP(velocity_remaining.z, -1.0f, 1.0f);
 
     // x advance
-    wt_vec3f_t dest = wt_vec3f_add(s->position, wt_vec3f(x, 0, 0));
-    if (x > 0.0f) dest.x += PLAYER_RADIUS; else dest.x -= PLAYER_RADIUS;
-    
-    wt_vec3i_t block_dest = wt_vec3f_to_vec3i(dest);
-    block_id_t block = 0;
-    if (world_within_bounds(block_dest))
+    wt_vec3f_t old_position = s->position;
+    s->position.x += x;
+    if (player_collides_with_world())
     {
-      block = world_get_block(block_dest);
-    }
-    if (block == 0)
-    {
-      s->position.x += x;
-    }
-    else
-    {
+      s->position = old_position;
       s->velocity.x = 0;
     }
 
     // y advance
+#if 0
     dest = wt_vec3f_add(s->position, wt_vec3f(0, y, 0));
     if (y > 0.0f) { dest.y += PLAYER_HEIGHT; }
-    
+
     block_dest = wt_vec3f_to_vec3i(dest);
     block = 0;
     if (world_within_bounds(block_dest))
@@ -169,23 +289,31 @@ void player_tick(void)
         s->position.y = block_dest.y + 1;
       }
     }
+#else
+    old_position = s->position;
+    s->position.y += y;
+    if (player_collides_with_world())
+    {
+      if (y < 0.0f)
+      {
+        wt_vec3i_t block_dest = wt_vec3f_to_vec3i(s->position);
+        s->position.y = block_dest.y + 1;
+      }
+      else
+      {
+        s->position.y = old_position.y;
+      }
+
+      s->velocity.y = 0;
+    }
+#endif
 
     // z advance
-    dest = wt_vec3f_add(s->position, wt_vec3f(0, 0, z));
-    if (z > 0.0f) dest.z += PLAYER_RADIUS; else dest.z -= PLAYER_RADIUS;
-    
-    block_dest = wt_vec3f_to_vec3i(dest);
-    block = 0;
-    if (world_within_bounds(block_dest))
+    old_position = s->position;
+    s->position.z += z;
+    if (player_collides_with_world())
     {
-      block = world_get_block(block_dest);
-    }
-    if (block == 0)
-    {
-      s->position.z += z;
-    }
-    else
-    {
+      s->position = old_position;
       s->velocity.z = 0;
     }
 
@@ -199,7 +327,7 @@ void player_tick(void)
   camera_pos.y += PLAYER_HEIGHT / 2.0f; // the camera should be at the head
 
   static const wt_vec3f_t k_camera_up = { 0, 1, 0 };
- 
+
   wt_vec3f_t camera_front = { 0, 0, 1 };
 
   wt_vec3f_t front = { 0 };

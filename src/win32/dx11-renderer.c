@@ -33,7 +33,7 @@ static void update_buffer(ID3D11Buffer *buffer, void *data, usize num_bytes)
 {
   ren_state_t *s = get_state();
   D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
-  
+
   ID3D11DeviceContext_Map(s->device_context, (ID3D11Resource*)buffer, 0,
     D3D11_MAP_WRITE_DISCARD, 0, &mapped);
   WT_ASSERT(mapped.pData);
@@ -55,7 +55,7 @@ dx11_shader_t dx11_shader_load(const char *vs_path, const char *ps_path,
   {
     CHECK(ID3D11Device_CreateVertexShader(s->device, vs_contents.data, vs_contents.size, NULL, &res.vs));
     CHECK(ID3D11Device_CreatePixelShader(s->device, ps_contents.data, ps_contents.size, NULL, &res.ps));
-      
+
     if (inputs && num_inputs > 0)
     {
       CHECK(ID3D11Device_CreateInputLayout(s->device, inputs, num_inputs,
@@ -111,7 +111,7 @@ void dx11_sprite_batch_flush(dx11_sprite_batch_t *sb)
     update_buffer(sb->cmd_buffer, sb->commands, sb->num_commands * sizeof(dx11_sprite_cmd_t));
     ID3D11DeviceContext_IASetPrimitiveTopology(s->device_context,
       D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-      
+
     ID3D11Buffer *const_buffers[2] = { s->const_buffer, sb->const_buffer };
     ID3D11DeviceContext_IASetVertexBuffers(s->device_context, 0, 0, NULL, NULL, NULL);
     ID3D11DeviceContext_IASetIndexBuffer(s->device_context, NULL, DXGI_FORMAT_UNKNOWN, 0);
@@ -139,7 +139,7 @@ static bool rects_intersect(wt_rect_t a, wt_rect_t b)
 static void expand_bounds_to_fit(wt_rect_t rect)
 {
   ren_state_t *s = get_state();
-  
+
   i32 bmnx = s->batch_bounds.x;
   i32 bmny = s->batch_bounds.y;
   i32 bmxx = s->batch_bounds.x + s->batch_bounds.w;
@@ -151,7 +151,7 @@ static void expand_bounds_to_fit(wt_rect_t rect)
     bmxx = 0;
     bmxy = 0;
   }
-  
+
   i32 rmnx = rect.x;
   i32 rmny = rect.y;
   i32 rmxx = rect.x + rect.w;
@@ -160,7 +160,7 @@ static void expand_bounds_to_fit(wt_rect_t rect)
   i32 mny = WT_MIN(bmny, rmny);
   i32 mxx = WT_MAX(bmxx, rmxx);
   i32 mxy = WT_MAX(bmxy, rmxy);
-  
+
   s->batch_bounds = wt_rect(mnx, mny, mxx - mnx, mxy - mny);
 }
 
@@ -259,7 +259,7 @@ void dx11_dynamic_buffer_update(dx11_dynamic_buffer_t *db, void *data, usize num
   ren_state_t *s = get_state();
 
   if (num_bytes == 0) return;
-  
+
   if (db->buffer == NULL || db->capacity < num_bytes)
   {
 #if 0
@@ -270,7 +270,7 @@ void dx11_dynamic_buffer_update(dx11_dynamic_buffer_t *db, void *data, usize num
 #else
     db->capacity = (num_bytes + 0xfff) & ~0xfff;
 #endif
-  
+
     ID3D11Buffer *old = db->buffer;
     CHECK(ID3D11Device_CreateBuffer(s->device, (&(D3D11_BUFFER_DESC){
         .ByteWidth = db->capacity,
@@ -339,7 +339,7 @@ void ren_init(void)
   CHECK(ID3D11Device_CreateDepthStencilState(s->device, (&(D3D11_DEPTH_STENCIL_DESC){
       .DepthEnable = true,
       .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL,
-      .DepthFunc = D3D11_COMPARISON_LESS,
+      .DepthFunc = D3D11_COMPARISON_LESS_EQUAL,
     }), &s->depth_stencil_state));
 
   // === solid batch ===
@@ -472,7 +472,7 @@ void ren_frame_begin(wt_vec2_t window_size)
 
   dx11_cbuffer_t cb = { 0 };
   cb.rc_window_size = wt_vec2f_div(wt_vec2f(1.0f, 1.0f), wt_vec2i_to_vec2f(window_size));
-  cb.projection = wt_mat4x4_perspective(0.2f, (f32)window_size.x / (f32)window_size.y, 0.01f, 10000.0f);
+  cb.projection = wt_mat4x4_perspective(0.2f, (f32)window_size.x / (f32)window_size.y, 0.001f, 10000.0f);
   cb.view = s->view_matrix;
   update_buffer(s->const_buffer, &cb, sizeof(dx11_cbuffer_t));
 
@@ -517,7 +517,7 @@ void ren_frame_end(void)
   }
 
   sys_mutex_unlock(s->chunk_data_mutex);
-  
+
   flush();
   IDXGISwapChain_Present(s->swap_chain, 1, 0);
 }
@@ -543,7 +543,7 @@ ren_texture_t ren_texture_new(wt_color_t *pixels, int width, int height)
 
   res.width = width;
   res.height = height;
-  
+
   CHECK(ID3D11Device_CreateTexture2D(s->device, (&(D3D11_TEXTURE2D_DESC){
       .Width = width,
       .Height = height,
@@ -606,7 +606,7 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
   usize num_indices = 0;
 
   bool shadows[CHUNK_SIZE_X * CHUNK_SIZE_Z] = { 0 };
-  
+
 //  for (usize i = 0; i < CHUNK_NUM_BLOCKS; ++i)
   for (isize i = CHUNK_NUM_BLOCKS - 1; i >= 0; --i)
   {
@@ -614,10 +614,10 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
     {
       continue;
     }
-  
-    block_info_t *info = block_get_info(blocks[i]);    
+
+    block_info_t *info = block_get_info(blocks[i]);
     WT_ASSERT(info);
-  
+
     u32 top_idx = info->atlas_tiles[0].x + info->atlas_tiles[0].y * 16;
     u32 bot_idx = info->atlas_tiles[1].x + info->atlas_tiles[1].y * 16;
     u32 fnt_idx = info->atlas_tiles[2].x + info->atlas_tiles[2].y * 16;
@@ -713,7 +713,7 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
       block_vertices[3].light = WT_MAX(0, (int)block_vertices[3].light - 5);
     }
     *shadow = true;
-    
+
     for (usize j = 0; j < 6; ++j)
     {
       wt_vec3_t neighbor_offset = neighbors[j];
@@ -721,7 +721,7 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
 
       // if the block has a solid neighbor, we can skip drawing this face
       bool out_of_bounds =
-        (neighbor.x < 0 || neighbor.x >= CHUNK_SIZE_X) || 
+        (neighbor.x < 0 || neighbor.x >= CHUNK_SIZE_X) ||
         (neighbor.y < 0 || neighbor.y >= CHUNK_SIZE_Y) ||
         (neighbor.z < 0 || neighbor.z >= CHUNK_SIZE_Z);
 
@@ -741,7 +741,7 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
             (neighbor.y * CHUNK_SIZE_X * CHUNK_SIZE_Z)];
         }
       }
-        
+
       if (neighbor_id != 0)
       {
         block_info_t *neighbor_info = block_get_info(neighbor_id);
@@ -750,7 +750,7 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
           continue;
         }
       }
-    
+
       for (usize k = 0; k < 6; ++k)
       {
         indices[num_indices++] = block_indices[j * 6 + k] + num_vertices;
@@ -780,7 +780,7 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
   sys_mutex_lock(s->chunk_data_mutex);
   {
     dx11_chunk_data_footer_t footer = { 0 };
-  
+
   //update_buffer(c->const_buffer, &cbuffer_data, sizeof(cbuffer_data));
     footer.buffer = c->const_buffer;
     footer.num_bytes = sizeof(cbuffer_data);
@@ -804,7 +804,7 @@ void ren_chunk_generate_mesh(ren_chunk_t c, block_id_t *blocks)
 
   c->num_vertices = num_vertices;
   c->num_indices = num_indices;
-  
+
   mem_scratch_end();
 }
 
