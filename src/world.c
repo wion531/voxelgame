@@ -4,7 +4,11 @@
 #include "chunk.h"
 #include "job.h"
 #include "player.h"
+#include "system.h"
+#include <zstd.h>
 #include <math.h>
+
+#define WORLD_ZSTD_COMPRESS_LEVEL 3
 
 typedef struct
 {
@@ -58,6 +62,63 @@ void world_generate(void)
   }
 }
 
+#define WORLD_FILENAME "test.world"
+
+void world_save(void)
+{
+  mem_scratch_begin();
+
+  world_state_t *s = get_state();
+  sys_file_t file = sys_file_open(WORLD_FILENAME, SYS_FILE_WRITE);
+  if (file)
+  {
+    for (usize i = 0; i < WORLD_MAX_CHUNKS; ++i)
+    {
+      chunk_t *c = s->chunks[i];
+      sys_file_write(file, &c->position, sizeof(c->position));
+
+      usize cmp_buf_size = ZSTD_compressBound(sizeof(c->blocks));
+      void *cmp_buf = mem_scratch_push(cmp_buf_size);
+      usize cmp_size = ZSTD_compress(cmp_buf, cmp_buf_size, c->blocks, sizeof(c->blocks),
+        WORLD_ZSTD_COMPRESS_LEVEL);
+
+      sys_file_write(file, &cmp_size, sizeof(cmp_size));
+      sys_file_write(file, cmp_buf, cmp_size);
+    }
+    sys_file_close(file);
+  }
+
+  mem_scratch_end();
+}
+
+bool world_load(void)
+{
+  mem_scratch_begin();
+  world_state_t *s = get_state();
+  sys_file_t file = sys_file_open(WORLD_FILENAME, SYS_FILE_READ);
+  if (file)
+  {
+    for (usize i = 0; i < WORLD_MAX_CHUNKS; ++i)
+    {
+      chunk_t *c = s->chunks[i];
+      sys_file_read(file, &c->position, sizeof(c->position));
+
+      usize cmp_size = 0;
+      sys_file_read(file, &cmp_size, sizeof(cmp_size));
+      void *cmp_buf = mem_scratch_push(cmp_size);
+      sys_file_read(file, cmp_buf, cmp_size);
+
+      ZSTD_decompress(c->blocks, sizeof(c->blocks), cmp_buf, cmp_size);
+    }
+    sys_file_close(file);
+    world_dbg_rebuild_meshes();
+    mem_scratch_end();
+    return true;
+  }
+  mem_scratch_end();
+  return false;
+}
+
 void world_dbg_rebuild_meshes(void)
 {
   world_state_t *s = get_state();
@@ -83,7 +144,7 @@ void world_set_block(wt_vec3_t pos, block_id_t block)
     block_pos.x = pos.x % CHUNK_SIZE_X;
     block_pos.y = pos.y;
     block_pos.z = pos.z % CHUNK_SIZE_Z;
-    
+
     chunk_set_block(c, block_pos, block);
 
     // if we're breaking a block at the edge of a chunk, we need to update the neighboring chunk
@@ -117,7 +178,7 @@ block_id_t world_get_block(wt_vec3_t pos)
   {
     return 0;
   }
-  
+
   wt_vec2_t chunk_pos = { 0 };
   chunk_pos.x = floorf(pos.x / CHUNK_SIZE_X);
   chunk_pos.y = floorf(pos.z / CHUNK_SIZE_Z);
@@ -128,7 +189,7 @@ block_id_t world_get_block(wt_vec3_t pos)
 
   if (chunk_pos.x >= 0 && chunk_pos.y >= 0 &&
     chunk_pos.x < WORLD_MAX_CHUNKS_X && chunk_pos.y < WORLD_MAX_CHUNKS_Z)
-  {  
+  {
     chunk_t *c = s->chunks[chunk_pos.x + chunk_pos.y * WORLD_MAX_CHUNKS_X];
     return chunk_get_block(c, block_pos);
   }
@@ -172,7 +233,7 @@ world_raycast_t world_raycast(int max_num_blocks)
   bool hit = false;
 
   int max_dist_sq = max_num_blocks * max_num_blocks * 3;
-  
+
   wt_vec3i_t prev_map_pos = { 0 };
   for (int limit = 0; limit < 100000; ++limit)
   {

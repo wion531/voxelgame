@@ -23,6 +23,9 @@ void            world_tick(void);
 void            world_render(void);
 void            world_generate(void);
 
+void            world_save(void);
+bool            world_load(void);
+
 void            world_dbg_rebuild_meshes(void);
 
 void            world_set_block(wt_vec3_t pos, block_id_t block);

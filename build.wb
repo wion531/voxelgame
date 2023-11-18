@@ -1,5 +1,13 @@
 (include "lib/wt/build.wb")
 
+; zstd
+(add-static-library 'zstd
+  "lib/zstd/lib/common/*.c"
+  "lib/zstd/lib/compress/*.c"
+  "lib/zstd/lib/decompress/*.c")
+(add-compile-definitions 'zstd "-DZSTD_MULTITHREAD")
+
+; host
 (if
   (is system "win32") (add-executable 'host "src/win32/win32-host.c")
   t (print "no host for system!!!"))
@@ -7,8 +15,10 @@
 
 (add-wt 'host)
 
+; guest
 (add-dynamic-library 'guest "src/*.c")
-(add-include-directories 'guest "lib/stb")
+(add-include-directories 'guest "lib/stb" "lib/zstd/lib")
+(add-link-libraries 'guest 'zstd)
 
 ; system specific stuff
 (if

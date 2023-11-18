@@ -83,7 +83,10 @@ void game_init(game_state_t *s)
   s->hotbar[5] = s->blocks[BLOCK_LOG];
   s->hotbar[6] = s->blocks[BLOCK_LEAVES];
 
-  world_generate();
+  if (!world_load())
+  {
+    world_generate();
+  }
 }
 
 static void game_render(void);
@@ -209,6 +212,11 @@ bool game_tick(game_state_t *s)
   if (sys_key_pressed(SYS_KEYCODE_R))
   {
     world_dbg_rebuild_meshes();
+  }
+
+  if (sys_key_pressed(SYS_KEYCODE_Q))
+  {
+    world_save();
   }
 
   if (sys_key_down(SYS_KEYCODE_ESCAPE))
