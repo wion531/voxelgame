@@ -12,6 +12,8 @@
 
 #define TERMINAL_VELOCITY -53.0f
 
+#define MOVE_ACCEL 0.02f
+
 #define JUMP_FORCE 10
 
 typedef struct
@@ -20,8 +22,13 @@ typedef struct
   wt_vec2f_t rotation;
   wt_vec3f_t velocity;
 
+  wt_vec2f_t move_dir;
+
+  f32 move_speed;
+
   bool running;
   bool on_ground;
+  bool god_mode;
 } player_state_t;
 
 static player_state_t *get_state(void)
@@ -170,6 +177,12 @@ void player_tick(void)
 {
   player_state_t *s = get_state();
 
+  // === god mode toggle ===
+  if (sys_key_pressed(SYS_KEYCODE_V))
+  {
+    s->god_mode = !s->god_mode;
+  }
+
   // === mouse look ===
   wt_vec2_t mouse_delta = sys_mouse_get_delta();
   s->rotation.x += (f32)mouse_delta.x / 1000.0f;
@@ -178,7 +191,6 @@ void player_tick(void)
 
   // === horizontal movement ===
   s->running = sys_key_down(SYS_KEYCODE_LSHIFT);
-  f32 move_speed = (s->running) ? RUN_SPEED : WALK_SPEED;
 
   f32 dx = 0.0f;
   f32 dz = 0.0f;
@@ -201,21 +213,45 @@ void player_tick(void)
     dx = 1.0f;
   }
 
-  f32 mag = sqrt(dx*dx + dz*dz);
-  if (mag != 0.0f)
+  bool moving = (dx != 0.0f || dz != 0.0f);
+  f32 move_speed = (s->running) ? RUN_SPEED : WALK_SPEED;
+  if (!moving)
   {
-    dx /= mag;
-    dz /= mag;
+    move_speed = 0.0f;
   }
 
-  dx *= move_speed;
-  dz *= move_speed;
+  if (s->move_speed < move_speed)
+  {
+    s->move_speed = WT_MIN(s->move_speed + MOVE_ACCEL, move_speed);
+  }
+  else if (s->move_speed > move_speed)
+  {
+    s->move_speed = WT_MAX(s->move_speed - MOVE_ACCEL, move_speed);
+  }
 
-  s->velocity.x = dz * cosf(s->rotation.x * WT_TAU_F32);
-  s->velocity.z = dz * sinf(s->rotation.x * WT_TAU_F32);
+  if (moving)
+  {
+    s->move_dir.x = dx;
+    s->move_dir.y = dz;
+  }
 
-  s->velocity.x += dx * cosf((s->rotation.x + 0.25f) * WT_TAU_F32);
-  s->velocity.z += dx * sinf((s->rotation.x + 0.25f) * WT_TAU_F32);
+  f32 mag = sqrt(s->move_dir.x*s->move_dir.x + s->move_dir.y*s->move_dir.y);
+  if (mag != 0.0f)
+  {
+    s->move_dir.x /= mag;
+    s->move_dir.y /= mag;
+  }
+
+//  dx *= s->move_speed;
+//  dz *= s->move_speed;
+
+  s->velocity.x = s->move_dir.y * cosf(s->rotation.x * WT_TAU_F32);
+  s->velocity.z = s->move_dir.y * sinf(s->rotation.x * WT_TAU_F32);
+  s->velocity.x += s->move_dir.x * cosf((s->rotation.x + 0.25f) * WT_TAU_F32);
+  s->velocity.z += s->move_dir.x * sinf((s->rotation.x + 0.25f) * WT_TAU_F32);
+
+  s->velocity.x *= s->move_speed;
+  s->velocity.z *= s->move_speed;
 
   // === falling velocity ===
   wt_vec3_t below_pos = { 0 };
@@ -233,20 +269,37 @@ void player_tick(void)
     s->on_ground = false;
   }
 
-  if (s->on_ground)
+  if (!s->god_mode)
   {
-    s->velocity.y = 0.0f;
-  }
-  else if (s->velocity.y > TERMINAL_VELOCITY)
-  {
-    s->velocity.y += GRAVITY / 60.0f; // TODO: use delta time
+    if (s->on_ground)
+    {
+      s->velocity.y = 0.0f;
+    }
+    else if (s->velocity.y > TERMINAL_VELOCITY)
+    {
+      s->velocity.y += GRAVITY / 60.0f; // TODO: use delta time
+    }
   }
 
   // === jump ===
-  if (sys_key_down(SYS_KEYCODE_SPACE) && s->on_ground)
+  if (sys_key_down(SYS_KEYCODE_SPACE) && (s->on_ground || s->god_mode))
   {
     s->on_ground = false;
     s->velocity.y = JUMP_FORCE / 60.0f;
+  }
+  else if (s->god_mode)
+  {
+    s->velocity.y = 0;
+  }
+
+  if (s->god_mode)
+  {
+    if (sys_key_down(SYS_KEYCODE_LCTRL))
+    {
+      s->velocity.y = -JUMP_FORCE / 60.0f;
+    }
+
+    s->velocity = wt_vec3f_mul_f32(s->velocity, 1.5f);
   }
 
   // === applying velocity ===

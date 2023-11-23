@@ -60,6 +60,31 @@ void game_init(game_state_t *s)
     { "Leaves",
       { wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0), wt_vec2(5, 0) },
       false },
+
+    { "White Cloth",
+      { wt_vec2(1, 3), wt_vec2(1, 3), wt_vec2(1, 3), wt_vec2(1, 3), wt_vec2(1, 3), wt_vec2(1, 3) },
+      true },
+    { "Red Cloth",
+      { wt_vec2(2, 3), wt_vec2(2, 3), wt_vec2(2, 3), wt_vec2(2, 3), wt_vec2(2, 3), wt_vec2(2, 3) },
+      true },
+    { "Orange Cloth",
+      { wt_vec2(3, 3), wt_vec2(3, 3), wt_vec2(3, 3), wt_vec2(3, 3), wt_vec2(3, 3), wt_vec2(3, 3) },
+      true },
+    { "Yellow Cloth",
+      { wt_vec2(4, 3), wt_vec2(4, 3), wt_vec2(4, 3), wt_vec2(4, 3), wt_vec2(4, 3), wt_vec2(4, 3) },
+      true },
+    { "Green Cloth",
+      { wt_vec2(5, 3), wt_vec2(5, 3), wt_vec2(5, 3), wt_vec2(5, 3), wt_vec2(5, 3), wt_vec2(5, 3) },
+      true },
+    { "Blue Cloth",
+      { wt_vec2(6, 3), wt_vec2(6, 3), wt_vec2(6, 3), wt_vec2(6, 3), wt_vec2(6, 3), wt_vec2(6, 3) },
+      true },
+    { "Purple Cloth",
+      { wt_vec2(7, 3), wt_vec2(7, 3), wt_vec2(7, 3), wt_vec2(7, 3), wt_vec2(7, 3), wt_vec2(7, 3) },
+      true },
+    { "Black Cloth",
+      { wt_vec2(8, 3), wt_vec2(8, 3), wt_vec2(8, 3), wt_vec2(8, 3), wt_vec2(8, 3), wt_vec2(8, 3) },
+      true },
   };
 
   for (usize i = 0; i < WT_ARRAY_COUNT(blocks_info); ++i)
@@ -82,6 +107,15 @@ void game_init(game_state_t *s)
   s->hotbar[4] = s->blocks[BLOCK_TILE];
   s->hotbar[5] = s->blocks[BLOCK_LOG];
   s->hotbar[6] = s->blocks[BLOCK_LEAVES];
+
+  s->hotbar[7] = s->blocks[BLOCK_CLOTH_WHITE];
+  s->hotbar[8] = s->blocks[BLOCK_CLOTH_RED];
+  s->hotbar[9] = s->blocks[BLOCK_CLOTH_ORANGE];
+  s->hotbar[10] = s->blocks[BLOCK_CLOTH_YELLOW];
+  s->hotbar[11] = s->blocks[BLOCK_CLOTH_GREEN];
+  s->hotbar[12] = s->blocks[BLOCK_CLOTH_BLUE];
+  s->hotbar[13] = s->blocks[BLOCK_CLOTH_PURPLE];
+  s->hotbar[14] = s->blocks[BLOCK_CLOTH_BLACK];
 
   if (!world_load())
   {

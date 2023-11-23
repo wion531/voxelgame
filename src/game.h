@@ -6,7 +6,7 @@
 #include "block.h"
 #include "chunk.h"
 
-#define INVENTORY_SIZE 7
+#define INVENTORY_SIZE BLOCK_MAX
 
 typedef struct
 {
@@ -29,7 +29,7 @@ typedef struct
   game_modules_t modules;
 
 //  ren_chunk_t chunks[64 * 64];
-  
+
   ren_texture_t debug_font;
 
 /*
