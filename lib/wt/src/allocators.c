@@ -1,7 +1,7 @@
 #include <wt/wt.h>
 #include <string.h>
 
-static usize wt_align16(usize x)
+usize wt_align16(usize x)
 {
   return (x + 0xf) & ~0xf;
 }
@@ -108,7 +108,7 @@ void wt_pool_free_all(wt_pool_t *self)
     {
       __debugbreak();
     }
-    
+
     self->head = node;
   }
 }

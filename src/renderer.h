@@ -14,13 +14,12 @@ typedef struct ren_chunk_t *ren_chunk_t;
 
 void          ren_init(void);
 
+// todo: get rid of window size parameter, as it is now useless
 void          ren_frame_begin(wt_vec2_t window_size);
 void          ren_frame_end(void);
 
-// this function shouldn't be used in the runtime game once there's a proper asset system
-ren_texture_t ren_texture_load_from_file(const char *filename);
-// this one should be favored instead
 ren_texture_t ren_texture_new(wt_color_t *pixels, int width, int height);
+ren_texture_t ren_texture_load_from_file(const char *filename);
 void          ren_texture_free(ren_texture_t tx);
 
 ren_chunk_t   ren_chunk_new(wt_vec2_t position);

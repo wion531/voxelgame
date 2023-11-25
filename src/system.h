@@ -76,6 +76,10 @@ wt_vec2_t sys_mouse_get_pos(void);
 wt_vec2_t sys_mouse_get_delta(void);
 i32       sys_mouse_get_wheel(void);
 
+// === timing ===
+u64 sys_get_performance_counter(void);
+u64 sys_get_performance_frequency(void);
+
 // === threads and mutexes and shit ===
 
 typedef void *sys_thread_t;

@@ -26,7 +26,7 @@ typedef struct
 
   wt_pool_t thread_info_pool;
   wt_pool_t critical_section_pool;
-  
+
   WNDPROC wnd_proc;
 } sys_state_t;
 
@@ -37,12 +37,22 @@ static sys_state_t *get_state(void)
 
 static void incarcerate_the_mouse(void)
 {
-  POINT pos;
-  GetCursorPos(&pos);
-  RECT prison_cell = {
-    pos.x, pos.y, pos.x, pos.y
+  sys_state_t *s = get_state();
+  RECT client_rect;
+  GetClientRect(s->hwnd, &client_rect);
+
+  POINT center = {
+    (client_rect.left + client_rect.right) / 2,
+    (client_rect.top + client_rect.bottom) / 2
   };
+  RECT prison_cell = { center.x, center.y, center.x, center.y };
   ClipCursor(&prison_cell);
+}
+
+static void the_mouse_is_not_guilty(void)
+{
+  ReleaseCapture();
+  ClipCursor(NULL);
 }
 
 static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -81,7 +91,13 @@ static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
       }
     }
     break;
-  case WM_LBUTTONDOWN: s->input.mouse_buttons[SYS_MOUSE_LEFT]   = true;  break;
+  case WM_LBUTTONDOWN:
+    s->input.mouse_buttons[SYS_MOUSE_LEFT] = true;
+    if (s->input.mouse_captured)
+    {
+      incarcerate_the_mouse();
+    }
+    break;
   case WM_LBUTTONUP:   s->input.mouse_buttons[SYS_MOUSE_LEFT]   = false; break;
   case WM_RBUTTONDOWN: s->input.mouse_buttons[SYS_MOUSE_RIGHT]  = true;  break;
   case WM_RBUTTONUP:   s->input.mouse_buttons[SYS_MOUSE_RIGHT]  = false; break;
@@ -90,11 +106,31 @@ static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
   case WM_MOUSEWHEEL:
     s->input.mouse_wheel = GET_WHEEL_DELTA_WPARAM(wparam) / WHEEL_DELTA;
     break;
-  case WM_SETFOCUS:
+
+  // this is all a bunch of stupid shit just to get something that should have been
+  // a single API call to work
+  // seriously, this is such a common use-case for the mouse API that they should
+  // have made easy.
+  case WM_NCLBUTTONUP:
     if (s->input.mouse_captured)
     {
-      //incarcerate_the_mouse();
-      sys_mouse_capture();
+      incarcerate_the_mouse();
+    }
+    break;
+  case WM_SETFOCUS:
+    if (s->input.mouse_captured && LOWORD(lparam) == HTCLIENT)
+    {
+      incarcerate_the_mouse();
+    }
+    break;
+  case WM_SETCURSOR:
+    if (s->input.mouse_captured && LOWORD(lparam) == HTCLIENT)
+    {
+      SetCursor(NULL);
+    }
+    else
+    {
+      SetCursor(LoadCursor(NULL, IDC_ARROW));
     }
     break;
   default:
@@ -300,7 +336,8 @@ void sys_mouse_capture(void)
 {
   sys_state_t *s = get_state();
   SetCapture(s->hwnd);
-  ShowCursor(false);
+//  ShowCursor(false);
+  SetCursor(NULL);
 
   incarcerate_the_mouse();
 
@@ -318,13 +355,11 @@ void sys_mouse_capture(void)
 void sys_mouse_uncapture(void)
 {
   sys_state_t *s = get_state();
-  ReleaseCapture();
-  ShowCursor(true);
-  ClipCursor(NULL);
+  the_mouse_is_not_guilty();
 
   const RAWINPUTDEVICE rid = { 0x01, 0x02, RIDEV_REMOVE, NULL };
   RegisterRawInputDevices(&rid, 1, sizeof(rid));
-  
+
   s->input.mouse_captured = false;
 }
 
@@ -364,6 +399,20 @@ i32 sys_mouse_get_wheel(void)
   return s->input.mouse_wheel;
 }
 
+u64 sys_get_performance_counter(void)
+{
+  LARGE_INTEGER li;
+  QueryPerformanceCounter(&li);
+  return li.QuadPart;
+}
+
+u64 sys_get_performance_frequency(void)
+{
+  LARGE_INTEGER li;
+  QueryPerformanceFrequency(&li);
+  return li.QuadPart;
+}
+
 u32 sys_cpu_get_num_cores(void)
 {
   SYSTEM_INFO si = { 0 };
@@ -389,7 +438,7 @@ sys_thread_t sys_thread_new(sys_thread_func_t fn, void *param)
   thread_info_t *ti = malloc(sizeof(thread_info_t));
   ti->fn = fn;
   ti->param = param;
-  
+
   HANDLE hdl = CreateThread(NULL, 0, stupid_thread_func, ti, 0, NULL);
   return hdl;
 }
@@ -432,7 +481,7 @@ sys_mutex_t sys_mutex_new(void)
   sys_state_t *s = get_state();
   CRITICAL_SECTION *cs = wt_pool_alloc(&s->critical_section_pool);
   InitializeCriticalSection(cs);
-  return cs; 
+  return cs;
 }
 
 void sys_mutex_lock(sys_mutex_t mtx)

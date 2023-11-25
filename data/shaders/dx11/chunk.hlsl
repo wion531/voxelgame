@@ -10,7 +10,7 @@ struct vs_input_t
 */
 struct vs_input_t
 {
-  uint data : CUNT;
+  uint data : INPUT;
 };
 
 struct vs_output_t
@@ -54,6 +54,10 @@ vs_output_t vs_main(vs_input_t input)
   output.pos = mul(mul(u_projection, u_view), (float4(x, y, z, 1.0) + chunk_pos));
   output.uv = (tile_pos + uvs[texcoord]) * k_tile_size;
   output.color = float4(brightness, brightness, brightness, 1.0);
+
+  // adding a small margin to prevent sampling beyond tile boundaries
+  float2 margin = (uvs[texcoord] * 2 - 1) * 0.00001;
+  output.uv -= margin;
 
   return output;
 }

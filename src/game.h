@@ -5,6 +5,7 @@
 #include "renderer.h"
 #include "block.h"
 #include "chunk.h"
+#include "gpu.h"
 
 #define INVENTORY_SIZE BLOCK_MAX
 
@@ -12,6 +13,7 @@ typedef struct
 {
   void *mem;
   void *sys;
+  void *gpu;
   void *ren;
 
   void *rng;
@@ -32,11 +34,17 @@ typedef struct
 
   ren_texture_t debug_font;
 
+  f64 delta_time;
+
 /*
   wt_vec3f_t camera_pos;
   wt_vec3f_t camera_front;
   wt_vec2f_t camera_rotation;
 */
+  gpu_buffer_t const_buffer;
+  gpu_buffer_t vertex_buffer;
+  gpu_shader_t shader;
+  gpu_texture_t texture;
 
   block_id_t hotbar[INVENTORY_SIZE];
   isize hotbar_pos;

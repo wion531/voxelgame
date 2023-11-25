@@ -33,6 +33,8 @@ typedef struct
   usize align;
 } wt_buddy_t;
 
+usize wt_align16(usize x);
+
 wt_arena_t wt_arena_new(void *mem, usize size);
 void      *wt_arena_push(wt_arena_t *self, usize size);
 void       wt_arena_push_from(wt_arena_t *self, void *ptr, usize size);

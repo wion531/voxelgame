@@ -345,8 +345,8 @@ void ren_init(void)
   // === solid batch ===
   {
     D3D11_INPUT_ELEMENT_DESC inputs[] = {
-      { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,   0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-      { "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+      { "INPUT", 0, DXGI_FORMAT_R32G32_FLOAT,   0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+      { "INPUT", 1, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
     s->solid.shader = dx11_shader_load("data/shaders/dx11/solid.vs.cso",
       "data/shaders/dx11/solid.ps.cso", inputs, WT_ARRAY_COUNT(inputs));
@@ -378,7 +378,7 @@ void ren_init(void)
     s->chunk_pool = wt_pool_new(pool_buffer, CHUNK_MAX, sizeof(struct ren_chunk_t));
 
     D3D11_INPUT_ELEMENT_DESC inputs[] = {
-      { "CUNT", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+      { "INPUT", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
     };
     s->chunk_shader = dx11_shader_load("data/shaders/dx11/chunk.vs.cso",
       "data/shaders/dx11/chunk.ps.cso", inputs, WT_ARRAY_COUNT(inputs));

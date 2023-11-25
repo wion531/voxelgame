@@ -5,14 +5,14 @@
 #include "system.h"
 #include <math.h>
 
-#define WALK_SPEED (5.0f / 60.0f)
-#define RUN_SPEED (10.0f / 60.0f)
+#define WALK_SPEED 5.0f
+#define RUN_SPEED 10.0f
 
 #define GRAVITY -0.6f // sorry Mr. Davis
 
 #define TERMINAL_VELOCITY -53.0f
 
-#define MOVE_ACCEL 0.02f
+#define MOVE_ACCEL 1.0f
 
 #define JUMP_FORCE 10
 
@@ -175,6 +175,7 @@ bool player_intersects_block_position(wt_vec3i_t pos)
 
 void player_tick(void)
 {
+  game_state_t *gs = game_get_state();
   player_state_t *s = get_state();
 
   // === god mode toggle ===
@@ -277,7 +278,7 @@ void player_tick(void)
     }
     else if (s->velocity.y > TERMINAL_VELOCITY)
     {
-      s->velocity.y += GRAVITY / 60.0f; // TODO: use delta time
+      s->velocity.y += GRAVITY; // TODO: use delta time
     }
   }
 
@@ -285,7 +286,7 @@ void player_tick(void)
   if (sys_key_down(SYS_KEYCODE_SPACE) && (s->on_ground || s->god_mode))
   {
     s->on_ground = false;
-    s->velocity.y = JUMP_FORCE / 60.0f;
+    s->velocity.y = JUMP_FORCE;
   }
   else if (s->god_mode)
   {
@@ -296,7 +297,7 @@ void player_tick(void)
   {
     if (sys_key_down(SYS_KEYCODE_LCTRL))
     {
-      s->velocity.y = -JUMP_FORCE / 60.0f;
+      s->velocity.y = -JUMP_FORCE;
     }
 
     s->velocity = wt_vec3f_mul_f32(s->velocity, 1.5f);
@@ -312,7 +313,7 @@ void player_tick(void)
 
     // x advance
     wt_vec3f_t old_position = s->position;
-    s->position.x += x;
+    s->position.x += x * gs->delta_time;
     if (player_collides_with_world())
     {
       s->position = old_position;
@@ -332,7 +333,7 @@ void player_tick(void)
     }
     if (block == 0)
     {
-      s->position.y += y;
+      s->position.y += y * gs->delta_time;
     }
     else
     {
@@ -344,7 +345,7 @@ void player_tick(void)
     }
 #else
     old_position = s->position;
-    s->position.y += y;
+    s->position.y += y * gs->delta_time;
     if (player_collides_with_world())
     {
       if (y < 0.0f)
@@ -363,7 +364,7 @@ void player_tick(void)
 
     // z advance
     old_position = s->position;
-    s->position.z += z;
+    s->position.z += z * gs->delta_time;
     if (player_collides_with_world())
     {
       s->position = old_position;

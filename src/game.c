@@ -1,6 +1,7 @@
 #include "game.h"
 #include "memory.h"
 #include "system.h"
+#include "gpu.h"
 #include "renderer.h"
 #include "constants.h"
 #include "rng.h"
@@ -13,7 +14,25 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define STRIPPED_DOWN 1
+
 game_state_t *s_state;
+
+typedef struct
+{
+  wt_vec2f_t rc_window_size;
+  char pad[8];
+  wt_mat4x4_t projection;
+  wt_mat4x4_t view;
+  wt_mat4x4_t model;
+} const_buffer_data_t;
+
+typedef struct
+{
+  wt_vec2f_t pos;
+  wt_color_t color;
+  wt_vec2f_t uv;
+} vertex_t;
 
 void game_init(game_state_t *s)
 {
@@ -23,6 +42,11 @@ void game_init(game_state_t *s)
   sys_init();
   job_init();
   mem_post_init();
+
+#if STRIPPED_DOWN
+  gpu_init();
+  ren_init();
+#else
   ren_init();
 
   rng_init();
@@ -121,11 +145,14 @@ void game_init(game_state_t *s)
   {
     world_generate();
   }
+#endif
 }
 
 static void game_render(void);
 bool game_tick(game_state_t *s)
 {
+  u64 frame_begin = sys_get_performance_counter();
+
   s_state = s;
   bool should_close = sys_should_close();
   if (should_close)
@@ -135,6 +162,11 @@ bool game_tick(game_state_t *s)
 
   sys_poll_events();
 
+#if STRIPPED_DOWN
+  ren_frame_begin(wt_vec2(0, 0));
+
+  ren_frame_end();
+#else
   if (sys_key_pressed(SYS_KEYCODE_G))
   {
     world_generate();
@@ -142,62 +174,7 @@ bool game_tick(game_state_t *s)
 
   job_tick();
 
-  // === camera movement ===
-#if 0
-  {
-    static const f32 k_camera_speed = 0.1f;
-    static const f32 k_camera_run_speed = 0.2f;
-    static const wt_vec3f_t k_camera_up = { 0, 1, 0 };
-
-    wt_vec3f_t camera_front = { 0, 0, 1 };
-
-    f32 speed = (sys_key_down(SYS_KEYCODE_LSHIFT)) ? k_camera_run_speed : k_camera_speed;
-
-    if (sys_key_down(SYS_KEYCODE_SPACE))  { s->camera_pos.y += speed; }
-    if (sys_key_down(SYS_KEYCODE_LCTRL)) { s->camera_pos.y -= speed; }
-
-    wt_vec2_t mouse_delta = sys_mouse_get_delta();
-    s->camera_rotation.x += (f32)mouse_delta.x / 1000.0f;
-    s->camera_rotation.y -= (f32)mouse_delta.y / 1000.0f;
-
-    s->camera_rotation.y = WT_CLAMP(s->camera_rotation.y, -0.24, +0.24);
-
-    wt_vec3f_t front = { 0 };
-    front.x = cosf(s->camera_rotation.x * WT_TAU_F32) * cosf(s->camera_rotation.y * WT_TAU_F32);
-    front.y = sinf(s->camera_rotation.y * WT_TAU_F32);
-    front.z = sinf(s->camera_rotation.x * WT_TAU_F32) * cosf(s->camera_rotation.y * WT_TAU_F32);
-    camera_front = wt_vec3f_norm(front);
-
-    if (sys_key_down(SYS_KEYCODE_W))
-    {
-      s->camera_pos = wt_vec3f_add(s->camera_pos, wt_vec3f_mul_f32(camera_front, speed));
-    }
-    if (sys_key_down(SYS_KEYCODE_S))
-    {
-      s->camera_pos = wt_vec3f_sub(s->camera_pos, wt_vec3f_mul_f32(camera_front, speed));
-    }
-
-    if (sys_key_down(SYS_KEYCODE_D))
-    {
-      s->camera_pos = wt_vec3f_add(s->camera_pos,
-        wt_vec3f_mul_f32(wt_vec3f_norm(wt_vec3f_cross(camera_front, k_camera_up)), speed));
-    }
-    if (sys_key_down(SYS_KEYCODE_A))
-    {
-      s->camera_pos = wt_vec3f_sub(s->camera_pos,
-        wt_vec3f_mul_f32(wt_vec3f_norm(wt_vec3f_cross(camera_front, k_camera_up)), speed));
-    }
-
-    s->camera_front = camera_front;
-
-    wt_mat4x4_t direction = wt_mat4x4_look_at(s->camera_pos, wt_vec3f_add(s->camera_pos, camera_front),
-      k_camera_up);
-
-    ren_camera_set(direction);
-  }
-#else
   player_tick();
-#endif
 
   i32 mouse_wheel = sys_mouse_get_wheel();
   if (mouse_wheel != 0)
@@ -230,17 +207,36 @@ bool game_tick(game_state_t *s)
 
   if (sys_mouse_pressed(SYS_MOUSE_MIDDLE))
   {
-#if 0
-    world_raycast_t rc = world_raycast(10);
+    world_raycast_t rc = world_raycast(10000);
     if (rc.hit)
     {
-      block_id_t id = world_get_block(rc.pos);
-      if (id)
+      wt_vec3_t origin = rc.pos;
+      const int radius = 50;
+
+      wt_vec3_t begin = wt_vec3i_sub_i32(origin, radius);
+      wt_vec3_t end = wt_vec3i_add_i32(origin, radius);
+
+      for (int z = begin.z; z < end.z; ++z)
       {
-        s->player_holding = id;
+        for (int y = begin.y; y < end.y; ++y)
+        {
+          for (int x = begin.x; x < end.x; ++x)
+          {
+            wt_vec3_t pos = wt_vec3(x, y, z);
+            wt_vec3_t offset = wt_vec3i_sub(pos, origin);
+
+            f32 dist_sq = (f32)(offset.x * offset.x) + (f32)(offset.y * offset.y) +
+              (f32)(offset.z * offset.z);
+            f32 target_dist_sq = (f32)radius * (f32)radius;
+
+            if (world_within_bounds(pos) && dist_sq <= target_dist_sq)
+            {
+              world_set_block(pos, 0);
+            }
+          }
+        }
       }
     }
-#endif
   }
 
   if (sys_key_pressed(SYS_KEYCODE_R))
@@ -259,6 +255,13 @@ bool game_tick(game_state_t *s)
   }
 
   game_render();
+
+  u64 frame_end = sys_get_performance_counter();
+  u64 perf_freq = sys_get_performance_frequency();
+
+  WT_ASSERT(frame_end > frame_begin);
+  s->delta_time = (f64)(frame_end - frame_begin) / (f64)perf_freq;
+#endif
   return !should_close;
 }
 
