@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STRIPPED_DOWN 1
+#define STRIPPED_DOWN 0
 
 game_state_t *s_state;
 
@@ -43,10 +43,7 @@ void game_init(game_state_t *s)
   job_init();
   mem_post_init();
 
-#if STRIPPED_DOWN
   gpu_init();
-  ren_init();
-#else
   ren_init();
 
   rng_init();
@@ -145,7 +142,6 @@ void game_init(game_state_t *s)
   {
     world_generate();
   }
-#endif
 }
 
 static void game_render(void);
@@ -164,7 +160,10 @@ bool game_tick(game_state_t *s)
 
 #if STRIPPED_DOWN
   ren_frame_begin(wt_vec2(0, 0));
-
+  gpu_clear(WT_COLOR_BLACK);
+  ren_draw_rect(wt_rect(20, 20, 40, 40), WT_COLOR_RED);
+  ren_draw_rect(wt_rect(30, 30, 40, 40), WT_COLOR_GREEN);
+  ren_draw_rect(wt_rect(40, 40, 40, 40), WT_COLOR_BLUE);
   ren_frame_end();
 #else
   if (sys_key_pressed(SYS_KEYCODE_G))

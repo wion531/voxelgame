@@ -26,7 +26,7 @@ cbuffer chunk_uniform : register(b1)
   float2 u_rc_atlas_size;
 };
 
-Texture2D<float4> atlas_texture : register(t1);
+Texture2D<float4> atlas_texture : register(t0);
 SamplerState the_sampler : register(s0);
 
 vs_output_t vs_main(vs_input_t input)

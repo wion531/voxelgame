@@ -53,9 +53,8 @@
             (is build-mode "reldbg") "/O3 /Zi"
             (is build-mode "release") "/O3")
           " /Fo " ps-name " " filename)))
-    (add-shader "data/shaders/dx11/solid.hlsl")
-    (add-shader "data/shaders/dx11/textured.hlsl")
-    (add-shader "data/shaders/dx11/sprite.hlsl")
+    (add-shader "data/shaders/dx11/solid2d.hlsl")
+    (add-shader "data/shaders/dx11/sprite2d.hlsl")
     (add-shader "data/shaders/dx11/chunk.hlsl")))
 
 ; weird windows bullshit

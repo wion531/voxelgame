@@ -42,8 +42,8 @@ static void incarcerate_the_mouse(void)
   GetClientRect(s->hwnd, &client_rect);
 
   POINT center = {
-    (client_rect.left + client_rect.right) / 2,
-    (client_rect.top + client_rect.bottom) / 2
+    client_rect.left + (client_rect.right - client_rect.left) / 2,
+    client_rect.top + (client_rect.bottom - client_rect.top) / 2
   };
   RECT prison_cell = { center.x, center.y, center.x, center.y };
   ClipCursor(&prison_cell);

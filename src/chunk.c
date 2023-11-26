@@ -2,6 +2,7 @@
 #include "game.h"
 #include "memory.h"
 #include "job.h"
+#include "world.h"
 #include <math.h>
 
 typedef struct
@@ -55,7 +56,7 @@ static u32 scramble(u32 a)
   a = (a+0xd3a2646c) ^ (a<<9);
   a = (a+0xfd7046c5) + (a<<3);
   a = (a^0xb55a4f09) ^ (a>>16);
-#else
+#elif 0
   a ^= (a >> 17);
   a *= 0xed5ad4bb;
   a ^= (a >> 11);
@@ -63,6 +64,12 @@ static u32 scramble(u32 a)
   a ^= (a >> 15);
   a *= 0x31848bab;
   a ^= (a >> 14);
+#else
+  a ^= a >> 16;
+  a *= 0x7feb352dU;
+  a ^= a >> 15;
+  a *= 0x846ca68bU;
+  a ^= a >> 16;
 #endif
 
   return a;
@@ -108,6 +115,11 @@ static f32 stupid_sin(u32 x)
   return k_sin_table[x & 0xff];
 }
 
+static u32 random_from_position(int x, int y)
+{
+  return scramble(scramble(x ^ ~(x << (y & 0x3)) * y));
+}
+
 static wt_vec2f_t random_gradient(int ix, int iy)
 {
 #if 0
@@ -120,7 +132,7 @@ static wt_vec2f_t random_gradient(int ix, int iy)
   f32 random = a * (WT_PI_F32 / ~(~0u >> 1)); // in [0, 2*Pi]
   return wt_vec2f(cos(random), sin(random));
 #else
-  u32 sc = scramble((ix ^ ~(ix << (iy & 0x3)) * iy));
+  u32 sc = random_from_position(ix, iy);
 
   f32 s = stupid_sin(sc);
   f32 c = stupid_sin(64 - sc);
@@ -201,8 +213,70 @@ static block_id_t get_block(wt_vec3_t pos)
   return 0; // air
 }
 
+static void place_tree(wt_vec2_t pos)
+{
+  int x = pos.x, z = pos.y;
+  int y = 0;
+
+  // find the block right above the ground
+  for (y = CHUNK_SIZE_Y - 1; y >= 0; --y)
+  {
+    block_id_t block = world_get_block(wt_vec3(x, y, z));
+    if (block != 0)
+    {
+      y += 1;
+
+      // we don't want trees on trees
+      if (block == BLOCK_LEAVES)
+      {
+        return;
+      }
+
+      break;
+    }
+  }
+
+  // build a stump of random height
+  u32 height = ((random_from_position(pos.x, pos.x) ^ scramble(pos.y)) & 0x3) + 6;
+  for (u32 i = 0; i < height; ++i)
+  {
+    wt_vec3_t log_pos = wt_vec3(x, y + i, z);
+    if (world_within_bounds(log_pos))
+    {
+      world_set_block(log_pos, BLOCK_LOG);
+    }
+  }
+
+  // make a sphere of leaves
+  wt_vec3_t leaves_center = wt_vec3(x, y + height, z);
+
+  i32 radius = 4;
+  for (int yi = leaves_center.y - radius; yi < leaves_center.y + radius; ++yi)
+  {
+    for (int zi = leaves_center.z - radius; zi < leaves_center.z + radius; ++zi)
+    {
+      for (int xi = leaves_center.x - radius; xi < leaves_center.x + radius; ++xi)
+      {
+        wt_vec3_t leaf_pos = wt_vec3(xi, yi, zi);
+        wt_vec3_t offset = wt_vec3i_sub(leaf_pos, leaves_center);
+
+        f32 dist_sq = (f32)(offset.x * offset.x) + (f32)(offset.y * offset.y) +
+          (f32)(offset.z * offset.z);
+        f32 target_dist_sq = (f32)radius * (f32)radius;
+
+        if (world_within_bounds(leaf_pos) && dist_sq <= target_dist_sq &&
+          (xi != leaves_center.x || zi != leaves_center.z || yi > leaves_center.y))
+        {
+          world_set_block(leaf_pos, BLOCK_LEAVES);
+        }
+      }
+    }
+  }
+}
+
 void chunk_gen(chunk_t *c)
 {
+  // terrain shape
   for (usize i = 0; i < CHUNK_NUM_BLOCKS; ++i)
   {
     wt_vec3_t pos = { 0 };
@@ -214,6 +288,23 @@ void chunk_gen(chunk_t *c)
 
     c->blocks[i] = get_block(pos);
   }
+
+  // structures
+  for (usize z = 0; z < CHUNK_SIZE_Z; ++z)
+  {
+    for (usize x = 0; x < CHUNK_SIZE_X; ++x)
+    {
+      usize wx = c->position.x * CHUNK_SIZE_X + x;
+      usize wz = c->position.y * CHUNK_SIZE_Z + z;
+
+      u32 random = random_from_position(wx, wz);
+      if ((random & 0xff) == 0)
+      {
+        place_tree(wt_vec2(wx, wz));
+      }
+    }
+  }
+
   c->dirty = true;
 }
 

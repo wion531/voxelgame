@@ -143,7 +143,7 @@ typedef struct
   dx11_shader_t sprite_shader;
   dx11_shader_t chunk_shader;
   ren_texture_t tiles_texture;
-  
+
   dx11_solid_batch_t solid;
   dx11_sprite_batch_t sprites;
 

@@ -3,11 +3,12 @@
 
 #include <wt/wt.h>
 #include "block.h"
+#include "gpu.h"
 
 typedef struct
 {
   int width, height;
-  void *data;
+  gpu_texture_t texture;
 } ren_texture_t;
 
 typedef struct ren_chunk_t *ren_chunk_t;

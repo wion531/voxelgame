@@ -223,7 +223,10 @@ gpu_buffer_t gpu_buffer_new(gpu_buffer_desc_t *desc)
   {
     case GPU_BUFFER_VERTEX:   bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;   break;
     case GPU_BUFFER_INDEX:    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;    break;
-    case GPU_BUFFER_STRUCTS:  bd.BindFlags = D3D11_BIND_SHADER_RESOURCE; break;
+    case GPU_BUFFER_STRUCTS:
+      bd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+      bd.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+      break;
     case GPU_BUFFER_CONSTANT:
       bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
       bd.ByteWidth = wt_align16(bd.ByteWidth);
@@ -291,6 +294,7 @@ void gpu_buffer_bind(gpu_buffer_t buf, u32 slot)
   case GPU_BUFFER_STRUCTS:
     WT_ASSERT(db->shader_stage != GPU_SHADER_STAGE_PIXEL && "struct buffers aren't supported for pixel shaders");
     ID3D11DeviceContext_VSSetShaderResources(s->device_context, slot, 1, &db->srv);
+    break;
   case GPU_BUFFER_CONSTANT:
     if (db->shader_stage == GPU_SHADER_STAGE_VERTEX)
     {
@@ -442,8 +446,11 @@ gpu_shader_t gpu_shader_new(gpu_shader_desc_t *desc)
     num_input_elements += 1;
   }
 
-  CHECK(ID3D11Device_CreateInputLayout(s->device, input_elements, num_input_elements,
-    vs_contents.data, vs_contents.size, &ds->input_layout));
+  if (num_input_elements > 0)
+  {
+    CHECK(ID3D11Device_CreateInputLayout(s->device, input_elements, num_input_elements,
+      vs_contents.data, vs_contents.size, &ds->input_layout));
+  }
 
   mem_scratch_end();
   return res;
@@ -474,6 +481,19 @@ gpu_texture_t gpu_framebuffer_get_texture(gpu_framebuffer_t fb);
 void gpu_framebuffer_bind(gpu_framebuffer_t fb);
 void gpu_framebuffer_unbind(gpu_framebuffer_t fb);
 void gpu_framebuffer_free(gpu_framebuffer_t fb);
+
+void gpu_depth_enable(void)
+{
+  gpu_state_t *s = get_state();
+  ID3D11DeviceContext_OMSetRenderTargets(s->device_context, 1, &s->render_target_view,
+    s->depth_stencil_view);
+}
+
+void gpu_depth_disable(void)
+{
+  gpu_state_t *s = get_state();
+  ID3D11DeviceContext_OMSetRenderTargets(s->device_context, 1, &s->render_target_view, NULL);
+}
 
 void gpu_clear(wt_color_t clr)
 {

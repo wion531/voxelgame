@@ -121,6 +121,9 @@ void              gpu_framebuffer_bind(gpu_framebuffer_t fb);
 void              gpu_framebuffer_unbind(gpu_framebuffer_t fb);
 void              gpu_framebuffer_free(gpu_framebuffer_t fb);
 
+void gpu_depth_enable(void);
+void gpu_depth_disable(void);
+
 void gpu_clear(wt_color_t clr);
 void gpu_draw(gpu_primitive_type_t pt, usize offset, usize num_vertices);
 void gpu_draw_indexed(gpu_primitive_type_t pt, usize offset, usize num_indices);

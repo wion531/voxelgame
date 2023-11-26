@@ -4,8 +4,8 @@
 #include <wt/wt.h>
 #include "block.h"
 
-#define WORLD_MAX_CHUNKS_X 32
-#define WORLD_MAX_CHUNKS_Z 32
+#define WORLD_MAX_CHUNKS_X 64
+#define WORLD_MAX_CHUNKS_Z 64
 #define WORLD_MAX_CHUNKS (WORLD_MAX_CHUNKS_X * WORLD_MAX_CHUNKS_Z)
 
 typedef struct
